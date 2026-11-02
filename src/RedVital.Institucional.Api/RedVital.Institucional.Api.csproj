@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.*" />
+    <PackageReference Include="Confluent.Kafka" Version="2.15.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RedVital.Institucional.Aplicacion\RedVital.Institucional.Aplicacion.csproj" />
+    <ProjectReference Include="..\RedVital.Institucional.Infraestructura\RedVital.Institucional.Infraestructura.csproj" />
+  </ItemGroup>
+</Project>
