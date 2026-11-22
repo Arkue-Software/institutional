@@ -1,0 +1,7 @@
+bin/
+obj/
+.vs/
+*.user
+secretos/
+*.private.pem
+appsettings.*.local.json

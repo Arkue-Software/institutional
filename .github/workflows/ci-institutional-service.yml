@@ -1,0 +1,25 @@
+name: CI - institutional service
+
+on: 
+  workflow_dispatch: 
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  compilar-dotnet:
+    name: Compilar ASP.NET Core 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Compilar la solucion
+        run: dotnet build RedVital.Institucional.sln
+
+      - name: Ejecutar las pruebas
+        run: dotnet test RedVital.Institucional.sln --no-build --no-restore

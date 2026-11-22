@@ -1,0 +1,239 @@
+asyncapi: 3.0.0
+info:
+  title: RedVital — Eventos del Servicio Institucional
+  version: 1.0.0
+  description: |
+    Contratos de los eventos que publica el Servicio Institucional y de los que
+    consume. Institucional no llama a ningún servicio ni recibe llamadas de
+    ellos: publica las instituciones y compone indicadores (M7) y bitácora
+    (ST2) con lo que recibe.
+
+    Política de contenido (RT-16): datos públicos de las instituciones y la
+    estructura común de auditoría. Ningún dato de donantes.
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: kafka:9092
+    protocol: kafka
+    security:
+      - $ref: '#/components/securitySchemes/scram'
+
+channels:
+  institucionCambiada:
+    address: redvital.institucional.institution-changed.v1
+    title: EV-07 — Institución cambiada
+    description: |
+      Cada alta o cambio de una institución, con su estado completo, se
+      escribe en la bandeja de salida en la misma transacción que el cambio.
+      Consumidores: Campañas (grupo campanias) y Donación (grupo donacion).
+      Tema compactado y sin vencimiento: un consumidor nuevo lee desde el
+      principio y queda con todas las instituciones.
+    messages:
+      institucionCambiada:
+        $ref: '#/components/messages/InstitucionCambiada'
+    bindings:
+      kafka:
+        partitions: 3
+        replicas: 1
+        topicConfiguration:
+          cleanup.policy: [compact]
+          retention.ms: -1
+        bindingVersion: 0.5.0
+  indicadoresActualizados:
+    address: redvital.donacion.indicators-updated.v1
+    title: EV-09 — Indicadores actualizados (consumido)
+    description: Productor Donación; contrato en el repositorio de Donación. Reemplaza la fotografía de M7 de la institución.
+    messages:
+      indicadoresActualizados:
+        $ref: '#/components/messages/IndicadoresActualizados'
+  auditoriaIdentidad:
+    address: redvital.identidad.audit-recorded.v1
+    title: EV-10 — Registro de auditoría de Identidad (consumido)
+    messages:
+      auditoriaRegistrada:
+        $ref: '#/components/messages/AuditoriaRegistrada'
+  auditoriaCampanias:
+    address: redvital.campanias.audit-recorded.v1
+    title: EV-10 — Registro de auditoría de Campañas (consumido)
+    messages:
+      auditoriaRegistrada:
+        $ref: '#/components/messages/AuditoriaRegistrada'
+  auditoriaDonacion:
+    address: redvital.donacion.audit-recorded.v1
+    title: EV-10 — Registro de auditoría de Donación (consumido)
+    messages:
+      auditoriaRegistrada:
+        $ref: '#/components/messages/AuditoriaRegistrada'
+
+operations:
+  publicarInstitucionCambiada:
+    action: send
+    channel:
+      $ref: '#/channels/institucionCambiada'
+    messages:
+      - $ref: '#/channels/institucionCambiada/messages/institucionCambiada'
+  consumirIndicadoresActualizados:
+    action: receive
+    channel:
+      $ref: '#/channels/indicadoresActualizados'
+    messages:
+      - $ref: '#/channels/indicadoresActualizados/messages/indicadoresActualizados'
+    bindings:
+      kafka:
+        groupId: { type: string, enum: [institucional] }
+        bindingVersion: 0.5.0
+  consumirAuditoriaIdentidad:
+    action: receive
+    channel:
+      $ref: '#/channels/auditoriaIdentidad'
+    messages:
+      - $ref: '#/channels/auditoriaIdentidad/messages/auditoriaRegistrada'
+    bindings:
+      kafka:
+        groupId: { type: string, enum: [institucional] }
+        bindingVersion: 0.5.0
+  consumirAuditoriaCampanias:
+    action: receive
+    channel:
+      $ref: '#/channels/auditoriaCampanias'
+    messages:
+      - $ref: '#/channels/auditoriaCampanias/messages/auditoriaRegistrada'
+    bindings:
+      kafka:
+        groupId: { type: string, enum: [institucional] }
+        bindingVersion: 0.5.0
+  consumirAuditoriaDonacion:
+    action: receive
+    channel:
+      $ref: '#/channels/auditoriaDonacion'
+    messages:
+      - $ref: '#/channels/auditoriaDonacion/messages/auditoriaRegistrada'
+    bindings:
+      kafka:
+        groupId: { type: string, enum: [institucional] }
+        bindingVersion: 0.5.0
+
+components:
+  securitySchemes:
+    scram:
+      type: scramSha512
+
+  messages:
+    InstitucionCambiada:
+      name: institution.changed
+      title: Institución cambiada
+      headers:
+        $ref: '#/components/schemas/Cabeceras'
+      payload:
+        $ref: '#/components/schemas/InstitucionCambiadaV1'
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: institucion_id
+          bindingVersion: 0.5.0
+    IndicadoresActualizados:
+      name: indicators.updated
+      title: Indicadores actualizados
+      headers:
+        $ref: '#/components/schemas/Cabeceras'
+      payload:
+        $ref: '#/components/schemas/IndicadoresActualizadosV1'
+    AuditoriaRegistrada:
+      name: audit.recorded
+      title: Registro de auditoría
+      headers:
+        $ref: '#/components/schemas/Cabeceras'
+      payload:
+        $ref: '#/components/schemas/AuditoriaRegistradaV1'
+
+  schemas:
+    Cabeceras:
+      type: object
+      required: [evento-id, evento-tipo, evento-version, correlacion-id, ocurrido-en, productor]
+      properties:
+        evento-id:
+          type: string
+          format: uuid
+        evento-tipo:
+          type: string
+        evento-version:
+          type: string
+        correlacion-id:
+          type: string
+          maxLength: 36
+        ocurrido-en:
+          type: string
+          format: date-time
+        productor:
+          type: string
+
+    InstitucionCambiadaV1:
+      type: object
+      additionalProperties: false
+      required: [institucion_id, codigo, nombre, tipo, territorio_codigo, territorio_ruta, vigente, cambiado_en]
+      properties:
+        institucion_id: { type: string, format: uuid }
+        codigo: { type: string, maxLength: 20, description: Código de habilitación. }
+        nombre: { type: string, maxLength: 160 }
+        tipo: { type: string, enum: [banco_de_sangre, servicio_transfusion] }
+        territorio_codigo: { type: string, pattern: '^[0-9]{5}$', description: Código DIVIPOLA del municipio. }
+        territorio_ruta: { type: string, pattern: '^/00/[0-9]{2}/[0-9]{5}$' }
+        vigente: { type: boolean, description: Falso si se dio de baja; la institución se sigue publicando. }
+        cambiado_en:
+          type: string
+          format: date-time
+          description: Momento del cambio; un consumidor no reemplaza su copia con un evento más viejo.
+
+    IndicadoresActualizadosV1:
+      type: object
+      description: Forma definida por Donación. Institucional tolera campos nuevos.
+      required: [institucion_id, generado_en, captacion, inventario]
+      properties:
+        institucion_id: { type: string, format: uuid }
+        generado_en: { type: string, format: date-time }
+        desde: { type: string, format: date }
+        hasta: { type: string, format: date }
+        captacion:
+          type: array
+          items:
+            type: object
+            required: [dia, donaciones, unidades_generadas, unidades_no_aptas, unidades_vencidas]
+            properties:
+              dia: { type: string, format: date }
+              donaciones: { type: integer, minimum: 0 }
+              unidades_generadas: { type: integer, minimum: 0 }
+              unidades_no_aptas: { type: integer, minimum: 0 }
+              unidades_vencidas: { type: integer, minimum: 0 }
+        inventario:
+          type: array
+          items:
+            type: object
+            required: [componente, grupo_sanguineo, unidades_disponibles, unidades_por_vencer, bajo_umbral]
+            properties:
+              componente: { type: string, maxLength: 30 }
+              grupo_sanguineo: { type: string, enum: [O-, O+, A-, A+, B-, B+, AB-, AB+] }
+              unidades_disponibles: { type: integer, minimum: 0 }
+              unidades_por_vencer: { type: integer, minimum: 0 }
+              bajo_umbral: { type: boolean }
+
+    AuditoriaRegistradaV1:
+      type: object
+      description: Forma común de las tres series. Institucional tolera campos nuevos.
+      required: [id, actor_tipo, actor_id, rol, jurisdiccion_solicitada, operacion, recurso_tipo, recurso_id, resultado,
+                 correlacion_id, origen, ocurrido_en]
+      properties:
+        id: { type: string, format: uuid }
+        actor_tipo: { type: string, enum: [usuario, sistema, anonimo] }
+        actor_id: { type: [string, 'null'], maxLength: 64 }
+        rol: { type: [string, 'null'], maxLength: 40 }
+        jurisdiccion_solicitada: { type: [string, 'null'], maxLength: 80 }
+        operacion: { type: string, maxLength: 80 }
+        recurso_tipo: { type: string, maxLength: 40 }
+        recurso_id: { type: [string, 'null'], format: uuid }
+        resultado: { type: string, enum: [permitido, denegado] }
+        correlacion_id: { type: string, maxLength: 36 }
+        origen: { type: [string, 'null'], maxLength: 45 }
+        ocurrido_en: { type: string, format: date-time }

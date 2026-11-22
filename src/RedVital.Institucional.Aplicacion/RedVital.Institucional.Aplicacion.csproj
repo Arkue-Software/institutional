@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Casos de uso y puertos. Depende solo del dominio: la base, HTTP y ASP.NET
+       entran por adaptadores de Infraestructura (inversión de dependencias). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RedVital.Institucional.Dominio\RedVital.Institucional.Dominio.csproj" />
+  </ItemGroup>
+</Project>
